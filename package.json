@@ -1,0 +1,17 @@
+{
+  "name": "formu-music",
+  "version": "1.0.0",
+  "description": "Formu Music — 음원 유통팀을 위한 스마트 접수·보완 검토 워크스페이스",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve . -l 4188"
+  },
+  "keywords": [
+    "music",
+    "distribution",
+    "metadata",
+    "review-desk"
+  ],
+  "author": "",
+  "license": "ISC"
+}

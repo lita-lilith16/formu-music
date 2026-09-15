@@ -1,51 +1,26 @@
 'use strict';
-(() => {
- const $=id=>document.getElementById(id);
- const state={started:false,confirmed:false,policy:1,split:false,receipt:false};
- function announce(message){$('live-status').textContent=message;}
- function update(){
-  for(const key of ['split','receipt']){
-   const hint=$(key+'-hint');
-   hint.textContent=state.confirmed?'시연 확인이 고정되었습니다.':state[key]?'✓ 확인 내용을 반영했습니다.':$(key+'-check').disabled?'위 근거 자료를 열면 확인란이 활성화됩니다.':'확인 가능 · 자료의 관계를 검토한 뒤 선택해 주세요.';
-  }
-  const remaining=Number(!state.split)+Number(!state.receipt);
-  $('pending-count').textContent=state.confirmed?'시연 제출본 확정':remaining?`확인 ${remaining}개 남음`:'확정할 준비가 됐습니다';
-  $('confirm').disabled=remaining>0||state.confirmed;
-  $('confirm').textContent=state.confirmed?'시연 확정 완료':'시연 제출본 확정';
-  $('confirm-help').textContent=state.confirmed?'v1.1의 시연 확인 기록을 고정했습니다. 실제 발매 승인이 아닙니다.':remaining?'각 근거를 연 뒤 확인란을 선택하면 확정할 수 있습니다.':'확인한 예시 제출본을 고정해 보세요.';
-  $('download').hidden=!state.confirmed;
-  $('split-state').textContent=state.split?'✓ 담당자 확인 완료 · 시연':'! 참여자 합의 확인 필요';
-  $('receipt-state').textContent=state.receipt?'✓ 담당자 확인 완료 · 시연':'! 곡·생성 시점과의 관계 확인 필요';
-  $('split-state').classList.toggle('done',state.split);
-  $('receipt-state').classList.toggle('done',state.receipt);
-  for(let i=1;i<=3;i++)$('step'+i).removeAttribute('aria-current');
-  $('step'+(!state.started?1:state.confirmed?3:2)).setAttribute('aria-current','step');
- }
- $('start').addEventListener('click',()=>{state.started=true;$('welcome').hidden=true;$('review').hidden=false;update();$('review-heading').focus();});
- for(const key of ['split','receipt']){
-  $(key+'-proof').addEventListener('toggle',()=>{if($(key+'-proof').open&&!state.confirmed){$(key+'-check').disabled=false;update();}});
-  $(key+'-check').addEventListener('change',()=>{state[key]=$(key+'-check').checked;update();announce($('pending-count').textContent);});
- }
- $('confirm').addEventListener('click',()=>{
-  if(!state.split||!state.receipt)return;
-  state.confirmed=true;for(const key of ['split','receipt'])$(key+'-check').disabled=true;
-  update();announce('시연 제출본 v1.1을 확정했습니다. 실제 유통 승인이 아닙니다.');
- });
- $('policy').addEventListener('click',()=>{
-  state.policy++;state.confirmed=false;state.receipt=false;$('receipt-check').checked=false;$('receipt-check').disabled=true;$('receipt-proof').open=false;
-  $('split-check').disabled=false;$('policy-note').hidden=false;$('policy-note').textContent=`! 기준 변경 시연: 증빙에 적용된 예시 기준이 v${state.policy}로 바뀌었습니다. 증빙을 다시 열고 관련 확인을 진행해 주세요.`;
-  update();announce('증빙 기준이 변경되어 해당 확인이 무효화됐습니다. 지분 확인과 이전 제출본은 유지됩니다.');$('receipt-proof').querySelector('summary').focus();
- });
- $('reset').addEventListener('click',()=>{
-  Object.assign(state,{started:false,confirmed:false,policy:1,split:false,receipt:false});
-  for(const key of ['split','receipt']){$(key+'-check').checked=false;$(key+'-check').disabled=true;$(key+'-proof').open=false;}
-  $('policy-note').hidden=true;$('welcome').hidden=false;$('review').hidden=true;update();$('start').focus();
- });
- $('download').addEventListener('click',()=>{
-  if(!state.confirmed)return;
-  const data={synthetic:true,realDistributionApproval:false,version:'v1.1',title:'Blue Hour',policyVersion:state.policy,credits:[{name:'김창작',share:60},{name:'이보컬',share:40}],demoReview:{split:state.split,receipt:state.receipt},note:'합성 자료로 만든 UI 시연 결과. 실제 권리 증빙, 검수 또는 발매 승인 아님.'};
-  const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
-  const link=document.createElement('a');link.href=url;link.download='formu-music-synthetic-v1.1.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);announce('합성 시연 JSON을 내려받았습니다.');
- });
- update();
-})();
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const motion=matchMedia('(prefers-reduced-motion: reduce)');
+let selected=null,checking=false;
+function message(target,text){target.hidden=false;target.textContent=text;}
+function choose(file){if(checking)return;selected=null;$('#check-result').hidden=true;if(file&&(!file.size||file.size>100_000_000)){message($('#check-result'),'0 MB 초과, 100 MB 이하 파일을 선택해 주세요.');file=null;}selected=file;$('#file-label').textContent=file?file.name:'음원 한 곡을 놓아주세요.';$('#file-selected').hidden=!file;$('#file-info').textContent=file?`${(file.size/1e6).toFixed(1)} MB · 분석할 파일`:'';$('#analyze').disabled=!file;$('#analyze').textContent=file?'이 파일 무료 점검 →':'파일 선택 후 점검 시작 →';}
+$('#audio-file').addEventListener('change',e=>choose(e.target.files[0]));
+$('#clear-file').onclick=()=>{$('#audio-file').value='';choose(null);};
+for(const event of ['dragenter','dragover'])$('#dropzone').addEventListener(event,e=>{e.preventDefault();$('#dropzone').classList.add('dragging');});
+for(const event of ['dragleave','drop'])$('#dropzone').addEventListener(event,e=>{e.preventDefault();$('#dropzone').classList.remove('dragging');});
+$('#dropzone').addEventListener('drop',e=>{if(e.dataTransfer.files.length!==1){message($('#check-result'),'한 번에 음원 한 곡을 선택해 주세요.');return;}choose(e.dataTransfer.files[0]);});
+// Selection is held separately so drag-and-drop does not need to modify a native FileList.
+$('#audio-form').noValidate=true;
+const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
+function renderReport(report){report.metrics=report.metrics||{};const box=$('#check-result');box.replaceChildren();box.hidden=false;const states={ready:['파일 기준 확인','pass'],supplement:['보완 필요','warn'],hold:['판단 보류','hold']};const [label,cls]=states[report.status]||states.hold;box.append(el('p','FORMU / FILE CHECK','eyebrow'),el('h3',label,`result-title ${cls}`),el('p','파일 기술 점검 결과입니다. 음질의 예술적 평가·권리 확인·유통사 발매 승인이 아닙니다.','caption'));const metrics=el('div',undefined,'result-metrics');for(const [k,v]of [['형식',report.metrics.codec],['샘플레이트',report.metrics.sampleRate?`${report.metrics.sampleRate} Hz`:'확인 불가'],['재생 길이',Number.isFinite(report.metrics.durationSeconds)?`${report.metrics.durationSeconds.toFixed(1)}초`:'확인 불가']]){const n=el('div');n.append(el('small',k),el('strong',v||'확인 불가'));metrics.append(n);}box.append(metrics);const details=el('details'),sum=el('summary','확인된 항목과 참고 사항 보기');details.append(sum);for(const c of report.checks){const row=el('div',undefined,'check-row');row.append(el('strong',`${{pass:'확인',hold:'보류',supplement:'보완',info:'참고'}[c.status]||'참고'} · ${c.title}`),el('p',c.detail));if(['hold','supplement'].includes(c.status))box.append(row);else details.append(row);}box.append(details);const source=el('a',`${report.rule.name} · 기준 확인 ${report.rule.checkedOn} ↗`,'text-link');source.href=report.rule.source;source.target='_blank';source.rel='noopener';box.append(source);const next=el('a','발매 준비 기능 시작 소식 받기 ↗','button blue');next.href='#contact';box.append(next);box.focus({preventScroll:true});}
+$('#audio-form').addEventListener('submit',async e=>{e.preventDefault();if(!selected||checking)return;checking=true;$('#analyze').disabled=true;$('#clear-file').disabled=true;$('#audio-file').disabled=true;$('#analyze').textContent='파일을 읽고 있습니다…';message($('#check-result'),'분석 중입니다. 파일 길이에 따라 잠시 걸릴 수 있습니다.');try{const res=await fetch('/api/audio-check',{method:'POST',headers:{'Content-Type':'application/octet-stream','X-File-Name':encodeURIComponent(selected.name)},body:selected,signal:AbortSignal.timeout(100000)});const data=await res.json();if(!res.ok||!data.report)throw Error(data.error||'점검을 완료하지 못했습니다.');renderReport(data.report);}catch(err){message($('#check-result'),err.name==='TimeoutError'?'점검 시간이 초과됐습니다. 더 짧은 파일로 다시 시도해 주세요.':err.message||'연결을 확인해 주세요.');}finally{checking=false;$('#analyze').disabled=false;$('#clear-file').disabled=false;$('#audio-file').disabled=false;$('#analyze').textContent='이 파일 다시 점검 →';}});
+const scenes=[['아티스트','음원 한 곡에서\n시작합니다.','아티스트가 파일을 올립니다. 이름·크레딧·이용 권리는 파일만으로 알아낼 수 없어 직접 확인합니다.','artist'],['포뮤','고칠 곳부터\n알려드립니다.','포뮤가 파일 규격과 무음·피크 신호를 점검하고, 확인 완료·보완 필요·판단 보류를 나눠 안내합니다.','formu'],['포뮤','조건을 비교하고,\n자료를 모읍니다.','공개 유통 조건을 비교하고 곡 정보·크레딧·증빙을 준비하는 기능을 개발 중입니다. 공유할 내용은 아티스트가 확인합니다.','formu'],['유통사','받은 자료를 보고,\n검토를 이어갑니다.','제휴 후에는 확인한 제출본과 보완 요청을 연결합니다. 미제휴 유통사는 공식 접수처로 안내하며, 발매 여부는 유통사가 결정합니다.','label']];
+let step=-1,trigger=null;
+function setStep(n){if(n===step)return;step=n;$('#scene-index').textContent=`0${n+1} / 04`;$('#scene-title').replaceChildren(...scenes[n][1].split('\n').flatMap((s,i)=>i?[document.createElement('br'),document.createTextNode(s)]:[document.createTextNode(s)]));$('#scene-description').textContent=scenes[n][2];$$('.scene').forEach((s,i)=>{s.classList.toggle('is-active',i===n);s.setAttribute('aria-hidden',String(i!==n));s.inert=i!==n;});$$('[data-step]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.step)===n)));$$('[data-person]').forEach(p=>p.classList.toggle('is-active',p.dataset.person===scenes[n][3]));$('#journey-next').textContent=n===3?'나에게 맞는 이용 방식 보기 ↗':'먼저 내 음원 점검하기 ↗';$('#journey-next').href=n===3?'#pricing':'#check';}
+setStep(0);
+if(window.gsap&&window.ScrollTrigger){gsap.registerPlugin(ScrollTrigger);gsap.matchMedia().add('(prefers-reduced-motion: no-preference) and (min-height: 651px)',()=>{gsap.from('.hero-copy > :not(.button)',{y:24,opacity:0,duration:.7,stagger:.1,ease:'power2.out',clearProps:'transform,opacity'});trigger=ScrollTrigger.create({trigger:'.journey-scroll',start:'top top',end:'bottom bottom',onUpdate:s=>setStep(Math.min(3,Math.floor(s.progress*4)))});return()=>{trigger=null;};});}
+$$('[data-step]').forEach(b=>b.onclick=()=>{const n=Number(b.dataset.step);if(trigger&&!motion.matches){window.scrollTo({top:trigger.start+(trigger.end-trigger.start)*(n+.15)/4,behavior:'instant'});}setStep(n);});
+$$('.price-toggle').forEach(b=>b.onclick=()=>{const open=b.getAttribute('aria-expanded')==='true';b.setAttribute('aria-expanded',String(!open));document.getElementById(b.getAttribute('aria-controls')).hidden=open;b.firstChild.textContent=open?'포함 기능 보기 ':'내용 닫기 ';b.querySelector('span').textContent=open?'＋':'−';});
+$$('[data-role]').forEach(a=>a.onclick=()=>{$(`input[name=role][value=${a.dataset.role}]`).checked=true;});
+const dialog=$('#evidence-dialog');$('#open-evidence').onclick=()=>dialog.showModal();$('.dialog-close').onclick=()=>dialog.close();dialog.onclick=e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}};
+$('#contact-form').addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget,button=form.querySelector('button[type=submit]');if(!form.reportValidity())return;button.disabled=true;const data=Object.fromEntries(new FormData(form));try{const response=await fetch('/api/music-signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,consent:data.consent==='on'})});const result=await response.json();if(!response.ok||result.mode!=='local-preview')throw Error(result.error||'저장 상태를 확인할 수 없습니다.');$('#contact-status').textContent='이 컴퓨터에 테스트 저장했습니다. 운영팀에 신청이 발송되지는 않았습니다.';form.reset();}catch(err){$('#contact-status').textContent=`저장하지 못했습니다. ${err.message}`;}finally{button.disabled=false;$('#contact-status').focus({preventScroll:true});}});

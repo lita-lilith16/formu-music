@@ -1,20 +1,30 @@
-# Formu Music — Review Desk
+# Formu Music — artist-first renewal
 
-음원 유통팀과 레이블 운영팀을 위한 접수·보완·제출본 확인 지원 서비스 **Formu Music**의 독립 웹 랜딩 및 인터랙션 시연 페이지입니다.
+2026-09-15 리뉴얼. 기준 소스는 이 디렉터리입니다.
 
-## 1. 개요
-- **목적**: 창작자의 보완본(크레딧 지분 변경, 이용 증빙 추가 등) 접수 시 바뀐 항목을 명확히 대조하고, 관련 근거 확인이 완료되기 전까지 임의 확정을 방지하는 워크스페이스 시연.
-- **구현 스택**: 순수 HTML5 / CSS3 / Vanilla JavaScript (외부 의존성 없음, 즉시 정적 호스팅 가능).
+## 실행
 
-## 2. 배포 및 로컬 실행
-- **로컬 실행**:
-  ```bash
-  npx serve . -l 4188
-  ```
-- **정적 호스팅 (0원 배포)**:
-  - **Vercel**: `npx vercel` 또는 GitHub 연결 (`https://formu-music.vercel.app`)
-  - **Render**: New Static Site 연결 (`https://formu-music.onrender.com`)
-  - **GitHub Pages**: Settings > Pages > `main` 브랜치 root 활성화
+Node.js와 ffmpeg/ffprobe가 설치된 환경에서 `npm start`.
+미리보기: http://127.0.0.1:4198/
+별도 Suno 도구: http://127.0.0.1:4198/check
+기존 4197 도구도 유지합니다 (`npm run start:suno`).
 
-## 3. 유의 사항
-본 페이지의 시연 데이터는 가상의 합성 시나리오(김창작/이보컬 지분 변경 및 증빙 첨부)를 기반으로 작동하며, 실제 저작권 승인 또는 DSP/DDEX 전송 대행을 의미하지 않습니다.
+## 실제 동작
+
+- 파일 선택·드롭 → 최대 100 MB 음원 기술 점검 → 결과·재점검.
+- 외부 Suno API 도구는 별도 화면에서 명시적 전송 동의 후 작동.
+- 4장면 스크롤, 단계 버튼, 가격 상세, 근거 모달, 역할 선택.
+- 관심 폼은 `data/music-preview-signups.json`에 로컬 테스트 저장. 운영팀 발송 없음.
+
+## 배포 상태
+
+공개 배포 전입니다. 이 서버는 127.0.0.1 전용입니다. 기존 `formu-landing/public/music`는 이전 배포 소스로 보존했습니다. HTML만 복사하면 API가 연결되지 않으므로 그대로 배포하지 마세요.
+후속 작업 명세: `../../02_사업기획_및_IR자료/antigravity-landing-renewal/안티그라비티_작업요청서.md`
+
+## 주의
+
+- 파일 기준 확인은 발매 승인·저작권 인증·청취 음질 평가가 아닙니다.
+- 가격은 지불 의향 인터뷰에 기초한 가설이며 결제는 제공하지 않습니다.
+- 유통사 연결·자료 저장·제출본 관리는 개발/제휴 전 기능입니다.
+- 로컬 개인정보 JSON을 버전 관리·배포·공유하지 마세요.
+- 이전 파일은 archive/pre-artist-renewal에 보존했습니다.

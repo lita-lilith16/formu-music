@@ -1,10 +1,12 @@
 {
   "name": "formu-music",
   "version": "1.0.0",
-  "description": "Formu Music — 음원 유통팀을 위한 스마트 접수·보완 검토 워크스페이스",
+  "description": "Formu Music — 아티스트의 음원 점검과 발매 준비",
   "main": "index.html",
   "scripts": {
-    "start": "npx serve . -l 4188"
+    "start": "node preview-server.mjs",
+    "start:suno": "node suno-test/server.mjs",
+    "check": "node --check music.js && node --check preview-server.mjs"
   },
   "keywords": [
     "music",

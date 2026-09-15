@@ -208,7 +208,11 @@ $$('.price-toggle').forEach(button=>{
     button.querySelector('span').textContent=open?'↶':'↗';
   }
   button.onclick=()=>setOpen(button.getAttribute('aria-expanded')!=='true');
-  front.addEventListener('click',()=>{setOpen(true);button.focus({preventScroll:true});});
+  front.addEventListener('click',()=>{setOpen(true);});
+  back.addEventListener('click',event=>{
+    if(event.target.closest('a, button, input, select, textarea')) return;
+    setOpen(false);
+  });
   card.addEventListener('keydown',event=>{
     if(event.key==='Escape'&&card.classList.contains('is-flipped')){
       setOpen(false);button.focus({preventScroll:true});
@@ -219,6 +223,21 @@ $$('.price-toggle').forEach(button=>{
 $$('[data-role]').forEach(a=>a.onclick=()=>{$(`input[name=role][value=${a.dataset.role}]`).checked=true;});
 const evDialog=$('#evidence-dialog');if(evDialog&&$('#open-evidence'))$('#open-evidence').onclick=()=>evDialog.showModal();
 const openCriteriaBtn=$('#open-criteria');if(openCriteriaBtn)openCriteriaBtn.onclick=()=>openCriteriaModal(latestReport);
+const evCta=$('#evidence-cta');
+if(evCta&&evDialog){
+ evCta.onclick=()=>{
+  evDialog.close();
+  const checkSec=$('#check');
+  if(checkSec){
+   checkSec.scrollIntoView({behavior:motion.matches?'instant':'smooth'});
+   const dropzone=$('#dropzone');
+   if(dropzone){
+    dropzone.tabIndex=0;
+    dropzone.focus({preventScroll:true});
+   }
+  }
+ };
+}
 $$('dialog').forEach(dia=>{
  dia.querySelectorAll('.dialog-close').forEach(b=>b.onclick=()=>dia.close());
  dia.onclick=e=>{

@@ -360,7 +360,8 @@
 .flip-ready .price-turn{display:grid;flex:1;transform-style:preserve-3d;transition:transform 650ms cubic-bezier(.22,.7,.2,1)}
 .flip-ready.is-flipped .price-turn{transform:rotateY(180deg)}
 .flip-ready .price-face{grid-area:1/1;min-width:0;padding:32px 36px 12px;background:var(--sleeve-color);backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;flex-direction:column;transform:rotateY(0deg)}
-.flip-ready .price-front{cursor:pointer}
+.flip-ready .price-front,
+.flip-ready .price-back{cursor:pointer}
 .flip-ready .price-back{transform:rotateY(180deg)}
 .flip-ready .price-amount{margin-top:auto;padding-top:20px}
 .flip-ready .price-details{position:static;inset:auto;background:transparent;color:white;padding:35px 0;box-shadow:none;animation:none;flex:1;gap:28px;justify-content:center}
@@ -402,6 +403,61 @@ button.rule-link {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* Evidence Pain Point Dialog Content */
+.evidence-intro {
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.75;
+  margin: 18px 0 10px;
+}
+.problem-item h3 {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 16px 0 8px;
+  color: var(--ink);
+  letter-spacing: -0.03em;
+}
+.problem-desc {
+  font-size: 14px;
+  line-height: 1.8;
+  margin: 6px 0;
+  color: #333;
+}
+.problem-solution {
+  font-size: 14px;
+  line-height: 1.8;
+  margin: 6px 0;
+  color: #191a1e;
+}
+.problem-solution strong {
+  color: var(--blue);
+  font-weight: 700;
+}
+.evidence-case h3,
+.evidence-support h3 {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 16px 0 10px;
+  letter-spacing: -0.03em;
+}
+.evidence-case p,
+.evidence-support p {
+  font-size: 14px;
+  line-height: 1.8;
+  margin: 6px 0;
+}
+.evidence-market-links {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+}
+.evidence-market-links p {
+  margin-bottom: 6px;
+}
+.evidence-action {
+  margin-top: 36px;
 }
 .criteria-dialog {
   width: min(780px, 94vw);

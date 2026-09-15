@@ -353,3 +353,256 @@
     flex-wrap: wrap;
   }
 }
+
+/* Record pricing: hover spins only the disc; deliberate click turns the sleeve. */
+.price-card.flip-ready{--sleeve-color:var(--ink);padding:0;min-height:0;overflow:visible;background:transparent;perspective:1600px;isolation:auto;display:flex;flex-direction:column}
+.price-card.blue-record.flip-ready{--sleeve-color:var(--blue)}
+.flip-ready .price-turn{display:grid;flex:1;transform-style:preserve-3d;transition:transform 650ms cubic-bezier(.22,.7,.2,1)}
+.flip-ready.is-flipped .price-turn{transform:rotateY(180deg)}
+.flip-ready .price-face{grid-area:1/1;min-width:0;padding:32px 36px 12px;background:var(--sleeve-color);backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;flex-direction:column;transform:rotateY(0deg)}
+.flip-ready .price-front{cursor:pointer}
+.flip-ready .price-back{transform:rotateY(180deg)}
+.flip-ready .price-amount{margin-top:auto;padding-top:20px}
+.flip-ready .price-details{position:static;inset:auto;background:transparent;color:white;padding:35px 0;box-shadow:none;animation:none;flex:1;gap:28px;justify-content:center}
+.flip-ready .price-details p{font-size:19px;line-height:1.8}
+.flip-ready .price-details a{color:white;text-decoration:none;border-bottom:1px solid #ffffff88;padding-bottom:8px;align-self:flex-start}
+.flip-ready .price-toggle{margin:0;background:var(--sleeve-color);padding:22px 36px;border:0;min-height:76px;text-align:left;align-items:center;gap:14px}
+.flip-ready .price-toggle:focus-visible{outline-color:#8b9dff;outline-offset:4px}
+.flip-ready .price-vinyl{visibility:visible!important;animation:spin 8s linear infinite;animation-play-state:paused}
+@media(hover:hover) and (pointer:fine){.flip-ready:not(.is-flipped):hover .price-vinyl{animation-play-state:running}}
+@media(max-width:760px){.flip-ready .price-face{padding:27px 25px 12px;min-height:450px}.flip-ready .price-toggle{padding:20px 25px;font-size:14px}.flip-ready .price-details p{font-size:17px}}
+@media(prefers-reduced-motion:reduce){.flip-ready .price-turn{transition:none}.flip-ready .price-vinyl{animation:none!important}}
+
+/* Criteria Guide Modal & Table */
+button.rule-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.check-actions-intro {
+  margin-top: 25px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.check-actions-intro .text-link {
+  margin-top: 0;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.criteria-dialog {
+  width: min(780px, 94vw);
+  max-height: 88vh;
+  padding: 40px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 8px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
+}
+.criteria-dialog h2 {
+  font-size: clamp(24px, 3vw, 36px);
+  margin: 12px 0 24px;
+  letter-spacing: -0.04em;
+}
+.criteria-table-wrap {
+  margin-top: 20px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  background: var(--white);
+  border-radius: 6px;
+}
+.criteria-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.criteria-table th,
+.criteria-table td {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.criteria-table tr:last-child th,
+.criteria-table tr:last-child td {
+  border-bottom: 0;
+}
+.criteria-table > tbody > tr > th {
+  background: #f8f8fa;
+  font-weight: 800;
+  color: var(--ink);
+  white-space: nowrap;
+  width: 26%;
+  border-right: 1px solid var(--line);
+}
+.criteria-table td {
+  color: #2b2c34;
+}
+.criteria-link {
+  display: inline-block;
+  color: var(--blue);
+  font-weight: 700;
+  text-decoration: underline;
+  margin-top: 6px;
+}
+.table-subnote {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+.criteria-points {
+  margin: 0;
+  padding-left: 18px;
+}
+.criteria-points li {
+  margin-bottom: 8px;
+}
+.criteria-points li:last-child {
+  margin-bottom: 0;
+}
+.criteria-points strong {
+  color: var(--ink);
+}
+.empty-result-note {
+  font-size: 13px;
+  color: var(--muted);
+  background: #fafafc;
+  padding: 14px 16px;
+  border-radius: 4px;
+  border: 1px dashed var(--line);
+}
+.my-compare-sheet {
+  background: #fcfcfd;
+  border: 1px solid #e2e4ea;
+  border-radius: 6px;
+  padding: 14px;
+}
+.my-compare-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eef0f5;
+}
+.compare-file-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+.compare-file-name {
+  color: var(--ink);
+  font-weight: 700;
+  word-break: break-all;
+}
+.table-responsive {
+  overflow-x: auto;
+}
+.sub-compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.sub-compare-table th,
+.sub-compare-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eef0f5;
+  text-align: left;
+}
+.sub-compare-table thead th {
+  background: #f2f4f8;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--muted);
+}
+.sub-compare-table tbody tr:last-child td,
+.sub-compare-table tbody tr:last-child th {
+  border-bottom: 0;
+}
+.status-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.chip-pass {
+  background: #e6f5ea;
+  color: var(--green);
+}
+.chip-fail {
+  background: #fff1d8;
+  color: var(--warn);
+}
+.chip-warn {
+  background: #fcebec;
+  color: var(--red);
+}
+.chip-info {
+  background: #eef2ff;
+  color: var(--blue);
+}
+
+@media(max-width: 760px) {
+  .criteria-dialog {
+    padding: 26px 18px;
+    width: 95vw;
+  }
+  .criteria-dialog h2 {
+    font-size: 22px;
+  }
+  .criteria-table th,
+  .criteria-table td {
+    padding: 14px 12px;
+    font-size: 13px;
+  }
+  .criteria-table > tbody > tr > th {
+    width: 32%;
+    white-space: normal;
+    word-break: keep-all;
+  }
+  .sub-compare-table th,
+  .sub-compare-table td {
+    padding: 6px 6px;
+    font-size: 11px;
+  }
+  .status-chip {
+    padding: 1px 5px;
+    font-size: 10px;
+  }
+}
+
+
+/* Membership direction, 2026-09-16: preserve the record interaction. */
+.pricing-stage{font-size:14px!important;margin-top:20px;color:var(--muted)}
+.pricing-section>.free-strip{margin:32px 0 28px}
+.annual-saving{display:block;margin-top:10px;font-size:14px!important;font-weight:700}
+.membership-scope{max-width:850px;padding:26px 0 20px;line-height:1.8}
+.membership-scope p{font-size:15px;margin:0 0 12px}
+.membership-scope p+p{font-size:13px;color:var(--muted)}
+.price-amount{font-variant-numeric:tabular-nums}
+/* Price hierarchy stays readable on both faces and at narrow widths. */
+.flip-ready .price-amount{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:5px;min-height:140px}
+.flip-ready .price-amount strong{font-size:clamp(36px,3.8vw,56px);line-height:1.15;letter-spacing:-.045em}
+.flip-ready .price-amount>span{font-size:14px;line-height:1.6;margin-top:0}
+.flip-ready .price-amount .annual-saving{margin-top:6px;padding-top:7px;border-top:1px solid #ffffff55}
+.flip-ready .price-top>span{font-family:var(--font);font-size:12px;letter-spacing:.08em}
+.flip-ready .vinyl-label b{font-family:var(--font);font-size:12px;letter-spacing:.03em}
+@media(max-width:760px){.flip-ready .price-amount{min-height:146px}.flip-ready .price-amount>span{font-size:13px}.flip-ready .price-amount strong{font-size:38px}}

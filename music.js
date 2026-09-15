@@ -25,8 +25,52 @@ $('#dropzone').addEventListener('drop',e=>{if(e.dataTransfer.files.length!==1){m
 // Selection is held separately so drag-and-drop does not need to modify a native FileList.
 $('#audio-form').noValidate=true;
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
+let latestReport=null;
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function renderCriteriaResult(report){
+ const container=$('#criteria-my-result');
+ if(!container)return;
+ if(!report||!report.metrics){
+  container.innerHTML='<p class="empty-result-note">파일 점검을 진행하면 기준값과 내 파일의 측정값이 이곳에 나란히 비교되어 표시됩니다.</p>';
+  return;
+ }
+ const m=report.metrics,checks=report.checks||[];
+ const cName={pcm_s16le:'WAV (16bit)',pcm_s24le:'WAV (24bit)',pcm_s32le:'WAV (32bit)',mp3:'MP3',flac:'FLAC',aac:'M4A (AAC)',alac:'M4A (ALAC)',aiff:'AIFF'}[m.codec]||(m.codec?String(m.codec).toUpperCase():'확인 불가');
+ const sizeMB=m.sizeBytes?(m.sizeBytes/1e6).toFixed(2)+' MB':(selected?(selected.size/1e6).toFixed(2)+' MB':'확인 불가');
+ let durText='확인 불가';
+ if(Number.isFinite(m.durationSeconds)){
+  const s=Math.round(m.durationSeconds),mm=String(Math.floor(s/60)).padStart(2,'0'),ss=String(s%60).padStart(2,'0');
+  durText=`${mm}:${ss} (${m.durationSeconds.toFixed(1)}초)`;
+ }
+ const srText=m.sampleRate?`${(m.sampleRate/1000).toLocaleString('ko-KR')} kHz`:'확인 불가';
+ let peakText='미확인';
+ if(m.samplePeakDbfs==='-inf')peakText='-inf dBFS (무음)';
+ else if(m.samplePeakDbfs!==undefined&&Number.isFinite(Number(m.samplePeakDbfs)))peakText=`${Number(m.samplePeakDbfs).toFixed(2)} dBFS`;
+
+ const formatCheck=checks.find(c=>c.title.includes('접수 파일 형식')||c.title.includes('형식'));
+ const formatStatus=formatCheck?formatCheck.status:'info';
+ const sizeCheck=checks.find(c=>c.title.includes('파일 크기'));
+ const sizeStatus=sizeCheck?sizeCheck.status:'pass';
+ const durCheck=checks.find(c=>c.title.includes('트랙 길이')||c.title.includes('재생 길이'));
+ const durStatus=durCheck?durCheck.status:'pass';
+ const peakCheck=checks.find(c=>c.title.includes('샘플 피크')||c.title.includes('무음')||c.title.includes('피크 레벨'));
+ const peakStatus=peakCheck?peakCheck.status:'info';
+
+ const statusLabel={pass:'✓ 충족',supplement:'! 보완',hold:'Ⅱ 확인',info:'참고'};
+ const chipClass={pass:'chip-pass',supplement:'chip-fail',hold:'chip-warn',info:'chip-info'};
+ const fileName=selected?selected.name:(m.fileName||'점검한 음원 파일');
+
+ container.innerHTML=`<div class="my-compare-sheet"><div class="my-compare-head"><span class="compare-file-label">점검 파일:</span><strong class="compare-file-name">${escapeHtml(fileName)}</strong></div><div class="table-responsive"><table class="sub-compare-table"><thead><tr><th scope="col">구분</th><th scope="col">적용 기준</th><th scope="col">내 파일 측정값</th><th scope="col">충족 여부</th></tr></thead><tbody><tr><th scope="row">형식</th><td>WAV, MP3, FLAC, AIFF, M4A, WMA</td><td><strong>${escapeHtml(cName)}</strong></td><td><span class="status-chip ${chipClass[formatStatus]||'chip-info'}">${statusLabel[formatStatus]||'참고'}</span></td></tr><tr><th scope="row">용량</th><td>100 MB 이하</td><td><strong>${escapeHtml(sizeMB)}</strong></td><td><span class="status-chip ${chipClass[sizeStatus]||'chip-pass'}">${statusLabel[sizeStatus]||'✓ 충족'}</span></td></tr><tr><th scope="row">길이</th><td>5시간 미만 (평균 60초 이상 권장)</td><td><strong>${escapeHtml(durText)}</strong></td><td><span class="status-chip ${chipClass[durStatus]||'chip-pass'}">${statusLabel[durStatus]||'✓ 충족'}</span></td></tr><tr><th scope="row">샘플레이트</th><td>44.1 kHz 이상 권장</td><td><strong>${escapeHtml(srText)}</strong></td><td><span class="status-chip chip-info">참고</span></td></tr><tr><th scope="row">피크 레벨</th><td>0 dBFS 미만 (클리핑 방지)</td><td><strong>${escapeHtml(peakText)}</strong></td><td><span class="status-chip ${chipClass[peakStatus]||'chip-info'}">${statusLabel[peakStatus]||'참고'}</span></td></tr></tbody></table></div></div>`;
+}
+function openCriteriaModal(report){
+ const rep=report||latestReport;
+ renderCriteriaResult(rep);
+ const dia=$('#criteria-dialog');
+ if(dia)dia.showModal();
+}
 function renderReport(report){
  if(!report||!Array.isArray(report.checks)||!report.rule||!['ready','supplement','hold'].includes(report.status))throw Error('점검 결과 형식을 확인하지 못했습니다. 다시 점검해 주세요.');
+ latestReport=report;
  const metricsData=report.metrics||{},box=$('#check-result');box.replaceChildren();box.hidden=false;
 
  // 1. 상단 파일명 및 문패
@@ -97,10 +141,12 @@ function renderReport(report){
  footInfo.append(el('p','검사 범위: 파일 기술 항목. 음악·말소리 구분과 권리 확인은 미검사.','scope-note'));
  const scopeDetails=el('details',undefined,'scope-details');
  scopeDetails.append(el('summary','검사 범위 자세히','scope-summary'),el('p','현재는 소리의 내용을 분류하지 않습니다. 음악·대화 녹음·테스트 신호도 파일 규격이 같으면 통과할 수 있습니다.','scope-full'));
- const ruleLink=el('a',`적용 기준: ${report.rule.name} · 확인일 ${report.rule.checkedOn} ↗`,'rule-link');
- ruleLink.href=report.rule.source;ruleLink.target='_blank';ruleLink.rel='noopener';
- footInfo.append(scopeDetails,ruleLink);
- box.append(footInfo);
+  const criteriaBtn=el('button','어떤 기준으로 점검했나요? ⓘ','rule-link criteria-trigger');
+  criteriaBtn.type='button';
+  criteriaBtn.id='sheet-open-criteria';
+  criteriaBtn.onclick=()=>openCriteriaModal(report);
+  footInfo.append(scopeDetails,criteriaBtn);
+  box.append(footInfo);
 
  // 7. 판정별 다음 행동
  const actionsWrap=el('div',undefined,'sheet-actions');
@@ -132,13 +178,54 @@ function renderReport(report){
  box.focus({preventScroll:true});
 }
 $('#audio-form').addEventListener('submit',async e=>{e.preventDefault();if(!selected||checking)return;if(window.location.protocol==='file:'){message($('#check-result'),'로컬 파일(file://)에서는 점검 API가 동작하지 않습니다. 서버(http://127.0.0.1:4198)를 통해 접속해 주세요.');return;}checking=true;$('#analyze').disabled=true;$('#clear-file').disabled=true;$('#audio-file').disabled=true;$('#analyze').textContent='파일을 읽고 있습니다…';message($('#check-result'),'분석 중입니다. 파일 길이에 따라 잠시 걸릴 수 있습니다.');try{await wakeServer();message($('#check-result'),'파일 분석 중입니다. 완료될 때까지 이 화면을 유지해 주세요.');const res=await fetch(API_BASE+'/api/audio-check',{method:'POST',headers:{'Content-Type':'application/octet-stream','X-File-Name':encodeURIComponent(selected.name)},body:selected,signal:AbortSignal.timeout(100000)});let data;try{data=await res.json();}catch(jsonErr){throw Error(`서버 응답 오류 (HTTP ${res.status}): 점검 API가 연결되지 않았습니다.`);}if(!res.ok||!data.report)throw Error(data?.error||'점검을 완료하지 못했습니다.');renderReport(data.report);}catch(err){message($('#check-result'),err.name==='TimeoutError'?'점검 시간이 초과됐습니다. 더 짧은 파일로 다시 시도해 주세요.':err.message||'연결을 확인해 주세요.');}finally{checking=false;$('#analyze').disabled=false;$('#clear-file').disabled=false;$('#audio-file').disabled=false;$('#analyze').textContent='이 파일 다시 점검 →';}});
-const scenes=[['아티스트','음원 한 곡에서\n시작합니다.','아티스트가 파일을 올립니다. 이름·크레딧·이용 권리는 파일만으로 알아낼 수 없어 직접 확인합니다.','artist'],['포뮤','고칠 곳부터\n알려드립니다.','포뮤가 파일 규격과 무음·피크 신호를 점검하고, 확인 완료·보완 필요·판단 보류를 나눠 안내합니다.','formu'],['포뮤','조건을 비교하고,\n자료를 모읍니다.','공개 유통 조건을 비교하고 곡 정보·크레딧·증빙을 준비하는 기능을 개발 중입니다. 공유할 내용은 아티스트가 확인합니다.','formu'],['유통사','받은 자료를 보고,\n검토를 이어갑니다.','제휴 후에는 확인한 제출본과 보완 요청을 연결합니다. 미제휴 유통사는 공식 접수처로 안내하며, 발매 여부는 유통사가 결정합니다.','label']];
+const scenes=[['아티스트','음원 한 곡에서\n시작합니다.','아티스트가 파일을 올립니다. 이름·크레딧·이용 권리는 파일만으로 알아낼 수 없어 직접 확인합니다.','artist'],['포뮤','고칠 곳부터\n알려드립니다.','포뮤가 파일 규격과 무음·피크 신호를 점검하고, 확인 완료·보완 필요·판단 보류를 나눠 안내합니다.','formu'],['포뮤','조건을 비교하고,\n자료를 모읍니다.','멤버십에서는 공개 접수 조건을 비교하고 곡 정보·크레딧·증빙을 정리하도록 돕습니다. 개발 중인 기능이며, 공유 전에는 아티스트가 최종 확인합니다.','formu'],['유통사','받은 자료를 보고,\n검토를 이어갑니다.','협력 유통사에는 제출본과 보완 요청을 연결할 예정입니다. 미연계 유통사는 정리한 자료를 내보내 공식 접수처에서 사용합니다. 최종 발매 판단은 유통사가 합니다.','label']];
 let step=-1,trigger=null;
 function setStep(n){if(n===step)return;step=n;$('#scene-index').textContent=`0${n+1} / 04`;$('#scene-title').replaceChildren(...scenes[n][1].split('\n').flatMap((s,i)=>i?[document.createElement('br'),document.createTextNode(s)]:[document.createTextNode(s)]));$('#scene-description').textContent=scenes[n][2];$$('.scene').forEach((s,i)=>{s.classList.toggle('is-active',i===n);s.setAttribute('aria-hidden',String(i!==n));s.inert=i!==n;});$$('[data-step]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.step)===n)));$$('[data-person]').forEach(p=>p.classList.toggle('is-active',p.dataset.person===scenes[n][3]));$('#journey-next').textContent=n===3?'나에게 맞는 이용 방식 보기 ↗':'먼저 내 음원 점검하기 ↗';$('#journey-next').href=n===3?'#pricing':'#check';}
 setStep(0);
 if(window.gsap&&window.ScrollTrigger){gsap.registerPlugin(ScrollTrigger);gsap.matchMedia().add('(prefers-reduced-motion: no-preference) and (min-height: 651px)',()=>{gsap.from('.hero-copy > :not(.button)',{y:24,opacity:0,duration:.7,stagger:.1,ease:'power2.out',clearProps:'transform,opacity'});trigger=ScrollTrigger.create({trigger:'.journey-scroll',start:'top top',end:'bottom bottom',onUpdate:s=>setStep(Math.min(3,Math.floor(s.progress*4)))});return()=>{trigger=null;};});}
 $$('[data-step]').forEach(b=>b.onclick=()=>{const n=Number(b.dataset.step);if(trigger&&!motion.matches){window.scrollTo({top:trigger.start+(trigger.end-trigger.start)*(n+.15)/4,behavior:'instant'});}setStep(n);});
-$$('.price-toggle').forEach(b=>b.onclick=()=>{const open=b.getAttribute('aria-expanded')==='true';b.setAttribute('aria-expanded',String(!open));document.getElementById(b.getAttribute('aria-controls')).hidden=open;b.firstChild.textContent=open?'포함 기능 보기 ':'내용 닫기 ';b.querySelector('span').textContent=open?'＋':'−';});
+// Keep the control stationary while the record sleeve turns as one surface.
+$$('.price-toggle').forEach(button=>{
+  const card=button.closest('.price-card');
+  const details=document.getElementById(button.getAttribute('aria-controls'));
+  const turn=document.createElement('div'); turn.className='price-turn';
+  const front=document.createElement('div'); front.className='price-face price-front';
+  const back=document.createElement('div'); back.className='price-face price-back';
+  const heading=card.querySelector('.price-top');
+  const amount=card.querySelector('.price-amount');
+  back.append(heading.cloneNode(true),details,amount.cloneNode(true));
+  front.append(heading,card.querySelector('.price-vinyl'),amount);
+  turn.append(front,back); card.insertBefore(turn,button);
+  details.hidden=false;
+  back.inert=true; back.setAttribute('aria-hidden','true');
+  card.classList.add('flip-ready');
+  function setOpen(open){
+    card.classList.toggle('is-flipped',open);
+    button.setAttribute('aria-expanded',String(open));
+    front.inert=open; front.setAttribute('aria-hidden',String(open));
+    back.inert=!open; back.setAttribute('aria-hidden',String(!open));
+    button.firstChild.textContent=open?'레코드 앞면으로 ':'카드 뒤집어 포함 기능 보기 ';
+    button.querySelector('span').textContent=open?'↶':'↗';
+  }
+  button.onclick=()=>setOpen(button.getAttribute('aria-expanded')!=='true');
+  front.addEventListener('click',()=>{setOpen(true);button.focus({preventScroll:true});});
+  card.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&card.classList.contains('is-flipped')){
+      setOpen(false);button.focus({preventScroll:true});
+    }
+  });
+  setOpen(false);
+});
 $$('[data-role]').forEach(a=>a.onclick=()=>{$(`input[name=role][value=${a.dataset.role}]`).checked=true;});
-const dialog=$('#evidence-dialog');$('#open-evidence').onclick=()=>dialog.showModal();$('.dialog-close').onclick=()=>dialog.close();dialog.onclick=e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}};
+const evDialog=$('#evidence-dialog');if(evDialog&&$('#open-evidence'))$('#open-evidence').onclick=()=>evDialog.showModal();
+const openCriteriaBtn=$('#open-criteria');if(openCriteriaBtn)openCriteriaBtn.onclick=()=>openCriteriaModal(latestReport);
+$$('dialog').forEach(dia=>{
+ dia.querySelectorAll('.dialog-close').forEach(b=>b.onclick=()=>dia.close());
+ dia.onclick=e=>{
+  if(e.target===dia){
+   const r=dia.getBoundingClientRect();
+   if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dia.close();
+  }
+ };
+});
 $('#contact-form').addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget,button=form.querySelector('button[type=submit]');if(!form.reportValidity())return;button.disabled=true;const data=Object.fromEntries(new FormData(form));try{const response=await fetch(API_BASE+'/api/music-signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,consent:data.consent==='on'})});const result=await apiJson(response);if(!response.ok||result.mode!=='local-preview')throw Error(result.error||'저장 상태를 확인할 수 없습니다.');$('#contact-status').textContent='테스트 서버에 임시 저장했습니다. 운영팀에 신청이 발송되지는 않았습니다.';form.reset();}catch(err){$('#contact-status').textContent=`저장하지 못했습니다. ${err.message}`;}finally{button.disabled=false;$('#contact-status').focus({preventScroll:true});}});

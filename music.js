@@ -28,32 +28,108 @@ const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefine
 function renderReport(report){
  if(!report||!Array.isArray(report.checks)||!report.rule||!['ready','supplement','hold'].includes(report.status))throw Error('점검 결과 형식을 확인하지 못했습니다. 다시 점검해 주세요.');
  const metricsData=report.metrics||{},box=$('#check-result');box.replaceChildren();box.hidden=false;
- const states={ready:['✓','파일 규격 통과','pass','검사한 파일 항목에서 보완할 사항이 발견되지 않았습니다.'],supplement:['!','보완 필요','fail','현재 적용 기준을 충족하지 못한 항목이 있습니다. 수정 후 다시 점검하세요.'],hold:['Ⅱ','판단 보류','pending','판단하지 못한 항목이나 직접 들어봐야 할 신호가 있습니다. 사유를 먼저 확인하세요.']};
- const [icon,label,tone,description]=states[report.status];
- const banner=el('div',undefined,`decision-banner ${tone}`);
- banner.append(el('p','FILE CHECK / 파일 기술 점검','eyebrow'));
- const heading=el('h3',undefined,'decision-heading');heading.append(el('span',icon,'decision-icon'),el('span',label));banner.append(heading,el('p',description));
- banner.append(el('small','이 라벨은 파일 기술 점검 결과입니다. 유통사의 발매 승인·거절을 뜻하지 않습니다.'));
- box.append(banner);
- const counts={pass:0,supplement:0,hold:0,info:0};report.checks.forEach(c=>{if(c.status in counts)counts[c.status]++;});
- const badges=el('div',undefined,'decision-counts');
- for(const [key,text,css]of [['pass','통과','pass'],['supplement','보완 필요','fail'],['hold','보류','pending'],['info','참고','info']])badges.append(el('span',`${text} ${counts[key]}`,`state-badge ${css}`));
- box.append(badges);
- const scope=el('div',undefined,'inspection-scope');
- const content=el('div');content.append(el('strong','음악·말소리 구분'),el('span','미검사','state-badge info'));
- scope.append(content,el('p','현재는 소리의 내용을 분류하지 않습니다. 음악, 대화 녹음, 테스트 신호도 파일 규격이 같으면 통과할 수 있습니다.'));
- box.append(scope);
- const metrics=el('div',undefined,'result-metrics');
- for(const [k,v]of [['오디오 형식',({pcm_s16le:'PCM · 16 bit',pcm_s24le:'PCM · 24 bit',pcm_s32le:'PCM · 32 bit',pcm_f32le:'PCM · 32 bit float',mp3:'MP3',aac:'AAC',flac:'FLAC'}[metricsData.codec]||metricsData.codec)],['샘플레이트',metricsData.sampleRate?`${(metricsData.sampleRate/1000).toLocaleString('ko-KR')} kHz`:'확인 불가'],['재생 길이',Number.isFinite(metricsData.durationSeconds)?`${metricsData.durationSeconds.toFixed(1)}초`:'확인 불가']]){const n=el('div');n.append(el('small',k),el('strong',v||'확인 불가'));metrics.append(n);}
- box.append(metrics);
- const details=el('details'),sum=el('summary',`전체 점검 항목 ${report.checks.length}개 보기`);details.append(sum);
- const labels={pass:['✓ 통과','pass'],supplement:['! 보완 필요','fail'],hold:['Ⅱ 보류','pending'],info:['참고','info']};
- const rowFor=c=>{const [text,cls]=labels[c.status]||labels.info;const row=el('div',undefined,`check-row status-${cls}`),head=el('div',undefined,'check-row-heading');head.append(el('span',text,`state-badge ${cls}`),el('strong',c.title));row.append(head,el('p',c.detail));return row;};
+
+ // 1. 상단 파일명 및 문패
+ const topBar=el('div',undefined,'sheet-topbar');
+ const topMeta=el('div',undefined,'sheet-meta');
+ topMeta.append(el('span','FORMU / FILE CHECK','eyebrow-sheet'),el('span','파일 기술 점검','sheet-tag'));
+ const fileName=el('div',selected?selected.name:(metricsData.fileName||'음원 파일'),'sheet-filename');
+ topBar.append(topMeta,fileName);
+ box.append(topBar);
+
+ // 2. 전체 판정 블록
+ const verdictBlock=el('div',undefined,`sheet-verdict status-${report.status}`);
+ const verdictHeader=el('div',undefined,'verdict-header');
+ const statusConfig={
+  ready:{title:'파일 규격 통과',badgeText:'✓ 기준 충족',tone:'pass',description:'검사한 파일 항목에서 보완할 사항이 발견되지 않았습니다.',primaryAction:'다른 파일 점검하기 →'},
+  supplement:{title:'보완 필요',badgeText:`! ${String(report.checks.filter(c=>c.status==='supplement').length).padStart(2,'0')}개`,tone:'fail',description:'기준을 충족하지 못한 항목을 수정한 뒤 다시 점검하세요.',primaryAction:'수정한 파일 선택하기 →'},
+  hold:{title:'판단 보류',badgeText:'Ⅱ 확인 필요',tone:'pending',description:'확인하지 못한 항목이 있습니다. 아래 사유를 확인하세요.',primaryAction:'이 파일 다시 점검하기 →'}
+ };
+ const cfg=statusConfig[report.status];
+ verdictHeader.append(el('h3',cfg.title,'verdict-title'),el('span',cfg.badgeText,`sheet-badge ${cfg.tone}`));
+ verdictBlock.append(verdictHeader,el('p',cfg.description,'verdict-desc'),el('p','파일 기술 점검 결과이며, 유통사의 발매 승인·거절을 뜻하지 않습니다.','sheet-disclaimer'));
+ box.append(verdictBlock);
+
+ // 3. 3개 파일 정보 행
+ const metricsGrid=el('div',undefined,'sheet-metrics');
+ const codecName={pcm_s16le:'WAV',pcm_s24le:'WAV (24bit)',pcm_s32le:'WAV (32bit)',mp3:'MP3',flac:'FLAC',aac:'M4A (AAC)',alac:'M4A (ALAC)',aiff:'AIFF'}[metricsData.codec]||(metricsData.codec?String(metricsData.codec).toUpperCase():'확인 불가');
+ const srText=metricsData.sampleRate?`${(metricsData.sampleRate/1000).toLocaleString('ko-KR')} kHz`:'확인 불가';
+ let durText='확인 불가';
+ if(Number.isFinite(metricsData.durationSeconds)){
+  const s=Math.round(metricsData.durationSeconds),mm=String(Math.floor(s/60)).padStart(2,'0'),ss=String(s%60).padStart(2,'0');
+  durText=`${mm}:${ss}`;
+ }
+ for(const [val,lbl] of [[codecName,'파일 형식'],[srText,'샘플레이트'],[durText,'재생 길이']]){
+  const col=el('div',undefined,'metric-col');col.append(el('strong',val,'metric-val'),el('span',lbl,'metric-lbl'));metricsGrid.append(col);
+ }
+ box.append(metricsGrid);
+
+ const renderRow=c=>{
+  const row=el('div',undefined,`sheet-check-row status-${c.status}`);
+  const rowHead=el('div',undefined,'check-head');
+  const badgeLabel={supplement:'! 보완 필요',hold:'Ⅱ 확인 필요',pass:'✓ 충족',info:'참고'}[c.status]||'참고';
+  const badgeCls={supplement:'fail',hold:'pending',pass:'pass',info:'info'}[c.status]||'info';
+  rowHead.append(el('span',badgeLabel,`row-badge ${badgeCls}`),el('strong',c.title,'row-title'));
+  row.append(rowHead,el('p',c.detail,'row-detail'));
+  return row;
+ };
+
+ // 4. 먼저 확인할 항목 (문제 항목)
  const attention=report.checks.filter(c=>c.status==='supplement'||c.status==='hold');
- if(attention.length){const section=el('section',undefined,'attention-checks');section.append(el('h4',`먼저 확인할 항목 ${attention.length}개`));attention.forEach(c=>section.append(rowFor(c)));box.append(section);}
- report.checks.forEach(c=>details.append(rowFor(c)));box.append(details);
- const foot=el('div',undefined,'result-actions');const source=el('a',`${report.rule.name} · ${report.rule.checkedOn} ↗`,'text-link');source.href=report.rule.source;source.target='_blank';source.rel='noopener';
- const next=el('a','발매 준비 기능 시작 소식 받기 ↗','button blue');next.href='#contact';foot.append(source,next);box.append(foot);box.focus({preventScroll:true});
+ if(attention.length>0){
+  const attentionSec=el('section',undefined,'sheet-attention');
+  attentionSec.append(el('h4',`먼저 확인할 항목 ${attention.length}개`,'attention-heading'));
+  attention.forEach(c=>attentionSec.append(renderRow(c)));
+  box.append(attentionSec);
+ }
+
+ // 5. 나머지 점검 항목 (접힌 영역, 문제 항목 중복 제거)
+ const remaining=report.checks.filter(c=>c.status!=='supplement'&&c.status!=='hold');
+ if(remaining.length>0){
+  const remainingDetails=el('details',undefined,'sheet-remaining');
+  remainingDetails.append(el('summary',`› 나머지 점검 항목 ${remaining.length}개 보기`,'remaining-summary'));
+  remaining.forEach(c=>remainingDetails.append(renderRow(c)));
+  box.append(remainingDetails);
+ }
+
+ // 6. 기준 및 한계 안내
+ const footInfo=el('div',undefined,'sheet-foot-info');
+ footInfo.append(el('p','검사 범위: 파일 기술 항목. 음악·말소리 구분과 권리 확인은 미검사.','scope-note'));
+ const scopeDetails=el('details',undefined,'scope-details');
+ scopeDetails.append(el('summary','검사 범위 자세히','scope-summary'),el('p','현재는 소리의 내용을 분류하지 않습니다. 음악·대화 녹음·테스트 신호도 파일 규격이 같으면 통과할 수 있습니다.','scope-full'));
+ const ruleLink=el('a',`적용 기준: ${report.rule.name} · 확인일 ${report.rule.checkedOn} ↗`,'rule-link');
+ ruleLink.href=report.rule.source;ruleLink.target='_blank';ruleLink.rel='noopener';
+ footInfo.append(scopeDetails,ruleLink);
+ box.append(footInfo);
+
+ // 7. 판정별 다음 행동
+ const actionsWrap=el('div',undefined,'sheet-actions');
+ const primaryBtn=el('button',cfg.primaryAction,'action-btn');
+ primaryBtn.type='button';
+ if(report.status==='ready'||report.status==='supplement'){
+  primaryBtn.onclick=()=>{
+   $('#audio-file').value='';
+   choose(null);
+   $('#audio-file').click();
+  };
+ }else{
+  primaryBtn.onclick=()=>{$('#audio-form').requestSubmit();};
+  const altBtn=el('button','다른 파일 선택하기 →','alt-file-btn');
+  altBtn.type='button';
+  altBtn.onclick=()=>{
+   $('#audio-file').value='';
+   choose(null);
+   $('#audio-file').click();
+  };
+  actionsWrap.append(altBtn);
+ }
+ const signupLink=el('a','발매 준비 기능 소식 받기 ↗','sheet-signup-link');
+ signupLink.href='#contact';
+ actionsWrap.prepend(primaryBtn);
+ actionsWrap.append(signupLink);
+ box.append(actionsWrap);
+
+ box.focus({preventScroll:true});
 }
 $('#audio-form').addEventListener('submit',async e=>{e.preventDefault();if(!selected||checking)return;if(window.location.protocol==='file:'){message($('#check-result'),'로컬 파일(file://)에서는 점검 API가 동작하지 않습니다. 서버(http://127.0.0.1:4198)를 통해 접속해 주세요.');return;}checking=true;$('#analyze').disabled=true;$('#clear-file').disabled=true;$('#audio-file').disabled=true;$('#analyze').textContent='파일을 읽고 있습니다…';message($('#check-result'),'분석 중입니다. 파일 길이에 따라 잠시 걸릴 수 있습니다.');try{await wakeServer();message($('#check-result'),'파일 분석 중입니다. 완료될 때까지 이 화면을 유지해 주세요.');const res=await fetch(API_BASE+'/api/audio-check',{method:'POST',headers:{'Content-Type':'application/octet-stream','X-File-Name':encodeURIComponent(selected.name)},body:selected,signal:AbortSignal.timeout(100000)});let data;try{data=await res.json();}catch(jsonErr){throw Error(`서버 응답 오류 (HTTP ${res.status}): 점검 API가 연결되지 않았습니다.`);}if(!res.ok||!data.report)throw Error(data?.error||'점검을 완료하지 못했습니다.');renderReport(data.report);}catch(err){message($('#check-result'),err.name==='TimeoutError'?'점검 시간이 초과됐습니다. 더 짧은 파일로 다시 시도해 주세요.':err.message||'연결을 확인해 주세요.');}finally{checking=false;$('#analyze').disabled=false;$('#clear-file').disabled=false;$('#audio-file').disabled=false;$('#analyze').textContent='이 파일 다시 점검 →';}});
 const scenes=[['아티스트','음원 한 곡에서\n시작합니다.','아티스트가 파일을 올립니다. 이름·크레딧·이용 권리는 파일만으로 알아낼 수 없어 직접 확인합니다.','artist'],['포뮤','고칠 곳부터\n알려드립니다.','포뮤가 파일 규격과 무음·피크 신호를 점검하고, 확인 완료·보완 필요·판단 보류를 나눠 안내합니다.','formu'],['포뮤','조건을 비교하고,\n자료를 모읍니다.','공개 유통 조건을 비교하고 곡 정보·크레딧·증빙을 준비하는 기능을 개발 중입니다. 공유할 내용은 아티스트가 확인합니다.','formu'],['유통사','받은 자료를 보고,\n검토를 이어갑니다.','제휴 후에는 확인한 제출본과 보완 요청을 연결합니다. 미제휴 유통사는 공식 접수처로 안내하며, 발매 여부는 유통사가 결정합니다.','label']];

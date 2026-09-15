@@ -6,7 +6,7 @@ const port = Number(process.env.PORT || process.env.FORMU_PREVIEW_PORT || 4198);
 const host = process.env.HOST || '0.0.0.0';
 const root = new URL('./', import.meta.url);
 const max = 100_000_000;
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'formu-admin-secret-2026';
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
 let busy = false;
 
 const routes = {
@@ -17,7 +17,10 @@ const routes = {
   '/symbol.svg': ['symbol.svg', 'image/svg+xml'],
   '/vendor/gsap.min.js': ['vendor/gsap.min.js', 'text/javascript'],
   '/vendor/ScrollTrigger.min.js': ['vendor/ScrollTrigger.min.js', 'text/javascript'],
-  '/check': ['suno-test/index.html', 'text/html']
+  '/check': ['check/index.html', 'text/html'],
+  '/check/': ['check/index.html', 'text/html'],
+  '/check.html': ['check.html', 'text/html'],
+  '/suno-test/index.html': ['suno-test/index.html', 'text/html']
 };
 
 function isValidOrigin(req) {
@@ -27,8 +30,7 @@ function isValidOrigin(req) {
     const originUrl = new URL(origin);
     const hostHeader = req.headers.host;
     if (hostHeader && originUrl.host === hostHeader) return true;
-    if (originUrl.hostname === '127.0.0.1' || originUrl.hostname === 'localhost') return true;
-    if (originUrl.hostname.endsWith('.onrender.com')) return true;
+    if (origin === 'https://formu-music.onrender.com') return true;
     if (process.env.FORMU_ALLOWED_ORIGINS) {
       const allowed = process.env.FORMU_ALLOWED_ORIGINS.split(',').map(s => s.trim());
       if (allowed.includes(origin)) return true;
@@ -42,6 +44,13 @@ function isValidOrigin(req) {
 http.createServer(async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
+  if (req.headers.origin && isValidOrigin(req)) {
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-File-Name, X-Suno-Consent');
+  }
+  if (req.method === 'OPTIONS') { res.writeHead(isValidOrigin(req) ? 204 : 403); return res.end(); }
 
   const send = (status, data) => {
     res.writeHead(status, {'Content-Type': 'application/json; charset=utf-8'});
@@ -66,7 +75,7 @@ http.createServer(async (req, res) => {
 
     // Admin API: View signups
     if (req.method === 'GET' && path === '/api/admin/signups') {
-      const token = parsedUrl.searchParams.get('token') || req.headers['x-admin-token'];
+      const token = req.headers['x-admin-token'];
       if (!token || token !== ADMIN_TOKEN) {
         return send(401, {error: '관리자 인증이 필요합니다.'});
       }
@@ -83,7 +92,7 @@ http.createServer(async (req, res) => {
 
     // Admin API: Delete signup
     if (req.method === 'DELETE' && path.startsWith('/api/admin/signups/')) {
-      const token = parsedUrl.searchParams.get('token') || req.headers['x-admin-token'];
+      const token = req.headers['x-admin-token'];
       if (!token || token !== ADMIN_TOKEN) {
         return send(401, {error: '관리자 인증이 필요합니다.'});
       }

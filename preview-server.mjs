@@ -20,6 +20,7 @@ const routes = {
   '/check': ['check/index.html', 'text/html'],
   '/check/': ['check/index.html', 'text/html'],
   '/check.html': ['check.html', 'text/html'],
+  '/assets/formu-og-v1.png': ['assets/formu-og-v1.png', 'image/png'],
   '/suno-test/index.html': ['suno-test/index.html', 'text/html']
 };
 
@@ -67,9 +68,11 @@ http.createServer(async (req, res) => {
     }
 
     // Static assets
-    if (req.method === 'GET' && routes[path]) {
+    if ((req.method === 'GET' || req.method === 'HEAD') && routes[path]) {
       const [file, type] = routes[path];
-      res.writeHead(200, {'Content-Type': `${type}; charset=utf-8`});
+      const contentType = type.startsWith('image/') && type !== 'image/svg+xml' ? type : `${type}; charset=utf-8`;
+      res.writeHead(200, {'Content-Type': contentType});
+      if (req.method === 'HEAD') return res.end();
       return res.end(await readFile(new URL(file, root)));
     }
 

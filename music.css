@@ -662,3 +662,67 @@ button.rule-link {
 .flip-ready .price-top>span{font-family:var(--font);font-size:12px;letter-spacing:.08em}
 .flip-ready .vinyl-label b{font-family:var(--font);font-size:12px;letter-spacing:.03em}
 @media(max-width:760px){.flip-ready .price-amount{min-height:146px}.flip-ready .price-amount>span{font-size:13px}.flip-ready .price-amount strong{font-size:38px}}
+
+/* ==========================================================================
+   Hero Artwork: Turntable Spin & Antigravity Weightless Float Motion
+   ========================================================================== */
+@keyframes turntableSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes heroArtFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes sleeveSway {
+  0%, 100% {
+    transform: rotate(-9deg) translateY(0);
+  }
+  50% {
+    transform: rotate(-7.5deg) translateY(-5px);
+  }
+}
+
+.hero-art {
+  animation: heroArtFloat 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.sleeve {
+  animation: sleeveSway 7s ease-in-out infinite;
+  will-change: transform;
+}
+
+.hero-vinyl {
+  animation: turntableSpin 20s linear infinite;
+  will-change: transform;
+  transition: filter 0.3s ease;
+}
+
+.hero-art:hover .hero-vinyl {
+  animation-duration: 8s;
+  filter: drop-shadow(0 0 16px rgba(36, 73, 235, 0.35));
+}
+
+@media(prefers-reduced-motion: reduce) {
+  .hero-art,
+  .hero-vinyl {
+    animation: none !important;
+    transform: none !important;
+  }
+  .sleeve {
+    animation: none !important;
+    transform: rotate(-9deg) !important;
+  }
+}
+
